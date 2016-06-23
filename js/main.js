@@ -23,36 +23,41 @@
     var ambient = new THREE.AmbientLight(0x333333);
     scene.add(ambient);
 
+    var translations = null;
     var orientations = null;
 
-    var loader = new THREE.JSONLoader();
-    loader.load('models/01_dublin_castle.json', function (modelGeo, materials) {
+    new THREE.XHRLoader().load('models/01_dublin_castle.json', function (res) {
+
+        var data = JSON.parse(res);
 
         var instances = 200;
         var geometory = new THREE.InstancedBufferGeometry();
 
-        var vertices = new THREE.BufferAttribute(new Float32Array(fighterPosArray), 3);
+        var rawVertices = data.vertices;
+
+        var vertices = new THREE.BufferAttribute(new Float32Array(rawVertices), 3);
         geometory.addAttribute('position', vertices);
 
         var uvs = new THREE.BufferAttribute(new Float32Array(fighterTexcoordArray), 2);
         geometory.addAttribute('uv', uvs);
 
-        var indices = new THREE.BufferAttribute(new Uint16Array(fighterIndexArray), 1);
+        var rawIndices = data.faces;
+        var indices = new THREE.BufferAttribute(new Uint16Array(rawIndices), 1);
         geometory.setIndex(indices);
 
         // per instance data
-        var offsets = new THREE.InstancedBufferAttribute(new Float32Array(instances * 3), 3, 1);
+        translations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 3), 3, 1);
 
         var vector = new THREE.Vector4();
-        for (var i = 0, ul = offsets.count; i < ul; i++) {
+        for (var i = 0, ul = translations.count; i < ul; i++) {
             var x = Math.random() * 100 - 50;
             var y = Math.random() * 100 - 50;
             var z = Math.random() * 100 - 50;
             vector.set(x, y, z, 0).normalize();
-            offsets.setXYZ(i, x + vector.x * 5, y + vector.y * 5, z + vector.z * 5);
+            translations.setXYZ(i, x + vector.x * 5, y + vector.y * 5, z + vector.z * 5);
         }
 
-        geometory.addAttribute('offset', offsets); // per mesh translation
+        geometory.addAttribute('translation', translations); // per mesh translation
 
         orientations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 4), 4, 1).setDynamic(true);
 
@@ -72,7 +77,7 @@
         var texture = new THREE.TextureLoader().load('img/mapping-check.png');
         texture.anisotropy = renderer.getMaxAnisotropy();
 
-        var material = new THREE.RawShaderMaterial({
+        var material = new THREE.ShaderMaterial({
             uniforms: {
                 map: { type: 't', value: texture }
             },
@@ -137,7 +142,14 @@
             orientations.setXYZW(i, currentQ.x, currentQ.y, currentQ.z, currentQ.w);
         }
 
+        for (var i = 0, ul = translations.count; i < ul; i++) {
+            var index = i * 3;
+            translations.setXYZ(i, 0, 0, 0);
+        }
+
+        // translations.needsUpdate = true;
         orientations.needsUpdate = true;
+
         lastTime = time;
 
         stats.end();
