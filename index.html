@@ -7,7 +7,6 @@
 <script src="models/fighter_positions.js"></script>
 <script src="models/fighter_texcoords.js"></script>
 <script src="models/fighter_indices.js"></script>
-<script src="js/main.js"></script>
 <style>
 html, body {
     margin: 0;
@@ -17,8 +16,44 @@ img, canvas {
     vertical-align: top;
 }
 </style>
+
+<script id="vs" type="x-shader/x-vertex">
+precision highp float;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+attribute vec3 position;
+attribute vec3 offset;
+attribute vec2 uv;
+attribute vec4 orientation;
+
+varying vec2 vUv;
+
+void main() {
+    vec3 vPosition = position;
+    vec3 vcV = cross(orientation.xyz, vPosition);
+    vPosition = vcV * (2.0 * orientation.w) + (cross(orientation.xyz, vcV) * 2.0 + vPosition);
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(offset + vPosition, 1.0);
+}
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+precision mediump float;
+
+uniform sampler2D map;
+
+varying vec2 vUv;
+
+void main() {
+    gl_FragColor = texture2D(map, vUv);
+}
+</script>
 </head>
 <body>
     
+<script src="js/stats.min.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
