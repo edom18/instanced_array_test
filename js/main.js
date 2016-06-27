@@ -2,12 +2,46 @@
 
     'use strict';
 
+
+    var vert = `
+        attribute vec3 translation;
+        attribute vec4 orientation;
+
+        varying vec2 vUv;
+
+        void main() {
+            vUv = uv;
+            vec3 vPosition = position;
+            vec3 vcV = cross(orientation.xyz, vPosition);
+            vPosition = vcV * (2.0 * orientation.w) + (cross(orientation.xyz, vcV) * 2.0 + vPosition);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(translation + vPosition, 1.0);
+        }
+    `;
+
+    var frag = `
+        precision mediump float;
+        uniform sampler2D map;
+
+        varying vec2 vUv;
+
+        void main() {
+            // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+            gl_FragColor = texture2D(map, vUv);
+        }
+    `;
+
+
+    //////////////////////////////////////////////////
+
+
     var initialized = false;
 
-    var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+    var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.y = 2;
-    camera.position.z = 2;
+    camera.position.z = 5;
     camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+    var controls = new THREE.OrbitControls(camera);
 
     var renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(0x101010);
@@ -27,24 +61,41 @@
     var translations = null;
     var orientations = null;
 
-    new THREE.XHRLoader().load('models/01_dublin_castle.json', function (res) {
+    new THREE.JSONLoader().load('models/table.json', function (geometry, materials) {
 
-        var data = JSON.parse(res);
+        var texture = materials[0].map;
+        var material = new THREE.ShaderMaterial({
+            vertexShader: vert,
+            fragmentShader: frag,
+            uniforms: {
+                map: { type: 't', value: texture }
+            }
+        });
 
         var instances = 200;
-        var geometory = new THREE.InstancedBufferGeometry();
 
-        var rawVertices = data.vertices;
+        // Base geometry
+        var bgeo = new THREE.BufferGeometry().fromGeometry(geometry);
 
-        var vertices = new THREE.BufferAttribute(new Float32Array(rawVertices), 3);
-        geometory.addAttribute('position', vertices);
+        // Instanced geometry
+        var igeo = new THREE.InstancedBufferGeometry();
 
-        var uvs = new THREE.BufferAttribute(new Float32Array(fighterTexcoordArray), 2);
-        geometory.addAttribute('uv', uvs);
+        var vertices = bgeo.attributes.position.clone();
+        igeo.addAttribute('position', vertices);
 
-        var rawIndices = data.faces;
-        var indices = new THREE.BufferAttribute(new Uint16Array(rawIndices), 1);
-        geometory.setIndex(indices);
+        // var rawVertices = data.vertices;
+        // var vertices = new THREE.BufferAttribute(new Float32Array(rawVertices), 3);
+        // geometory.addAttribute('position', vertices);
+
+        var uvs = bgeo.attributes.uv.clone();
+        igeo.addAttribute('uv', uvs);
+
+        // var uvs = new THREE.BufferAttribute(new Float32Array(fighterTexcoordArray), 2);
+        // geometory.addAttribute('uv', uvs);
+
+        // var rawIndices = data.faces;
+        // var indices = new THREE.BufferAttribute(new Uint16Array(rawIndices), 1);
+        // geometory.setIndex(indices);
 
         // per instance data
         translations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 3), 3, 1);
@@ -57,8 +108,7 @@
             vector.set(x, y, z, 0).normalize();
             translations.setXYZ(i, x + vector.x * 5, y + vector.y * 5, z + vector.z * 5);
         }
-
-        geometory.addAttribute('translation', translations); // per mesh translation
+        igeo.addAttribute('translation', translations); // per mesh translation
 
         orientations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 4), 4, 1).setDynamic(true);
 
@@ -71,23 +121,9 @@
 
             orientations.setXYZ(i, vector.x, vector.y, vector.z, vector.w);
         }
+        igeo.addAttribute('orientation', orientations); // per mesh orientaion
 
-        geometory.addAttribute('orientation', orientations); // per mesh orientaion
-
-        // material
-        var texture = new THREE.TextureLoader().load('img/mapping-check.png');
-        texture.anisotropy = renderer.getMaxAnisotropy();
-
-        var material = new THREE.ShaderMaterial({
-            uniforms: {
-                map: { type: 't', value: texture }
-            },
-            vertexShader: document.getElementById('vs').textContent,
-            fragmentShader: document.getElementById('fs').textContent,
-            transparent: false
-        });
-
-        var mesh = new THREE.Mesh(geometory, material);
+        var mesh = new THREE.Mesh(igeo, material);
         scene.add(mesh);
 
         if (renderer.extensions.get('ANGLE_instanced_arrays') === false) {
