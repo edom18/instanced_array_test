@@ -15,9 +15,33 @@ html, body {
 img, canvas {
     vertical-align: top;
 }
+#debug {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
 </style>
 </head>
 <body>
+
+    <div id="debug">
+        <p>
+            <select id="select-type" name="select-type">
+                <option value="instance">Instanced</option>
+                <option value="normalObject">Normal</option>
+            </select>
+        </p>
+        <p>
+            <select id="select-num" name="select-num">
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="1000">1000</option>
+                <option value="2000">2000</option>
+                <option value="5000">5000</option>
+                <option value="10000">10000</option>
+            </select>
+        </p>
+    <!-- /#debug --></div>
     
 <script src="js/stats.min.js"></script>
 <script src="js/OrbitControls.js"></script>
