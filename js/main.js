@@ -33,37 +33,77 @@
 
     //////////////////////////////////////////////////
 
+    var typeSelect = document.getElementById('select-type');
+    var numSelect = document.getElementById('select-num');
+
+    typeSelect.addEventListener('change', changeHandler, false);
+    numSelect.addEventListener('change', changeHandler, false);
 
     var initialized = false;
+    var renderingType = typeSelect.value;
+    var instances = +numSelect.value;
 
     var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.y = 2;
     camera.position.z = 5;
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
-    var controls = new THREE.OrbitControls(camera);
 
     var renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(0x101010);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
+    var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    if (renderer.extensions.get('ANGLE_instanced_arrays') === false) {
+        alert('Don\'t support instanced array extension.');
+        return;
+    }
+
     var scene = new THREE.Scene();
     window.scene = scene;
 
-    var light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(5, 10, 10);
-    scene.add(light);
+    // var light = new THREE.DirectionalLight(0xffffff);
+    // light.position.set(1, 5, -10);
+    // scene.add(light);
 
-    var ambient = new THREE.AmbientLight(0x333333);
+    var ambient = new THREE.AmbientLight(0x666666);
     scene.add(ambient);
 
     var translations = null;
     var orientations = null;
 
-    new THREE.JSONLoader().load('models/table.json', function (geometry, materials) {
+    var originalGeometry = null;
+    var originalMaterials = null;
 
-        var texture = materials[0].map;
+    var baseGeometry = null;
+
+    function changeHandler() {
+        renderingType = typeSelect.value;
+        instances = +numSelect.value;
+
+        makeObjects(instances, renderingType);
+    }
+
+    /**
+     * Remove All objects.
+     */
+    function removeAll() {
+        scene.children.forEach(function (child) {
+            if (child instanceof THREE.Mesh) {
+                scene.remove(child);
+            }
+        });
+    }
+
+    /**
+     * Make instance
+     *
+     * @param {number} count
+     */
+    function makeInstance(count) {
+        var texture = originalMaterials[0].map;
         var material = new THREE.ShaderMaterial({
             vertexShader: vert,
             fragmentShader: frag,
@@ -72,33 +112,17 @@
             }
         });
 
-        var instances = 200;
-
-        // Base geometry
-        var bgeo = new THREE.BufferGeometry().fromGeometry(geometry);
-
         // Instanced geometry
         var igeo = new THREE.InstancedBufferGeometry();
 
-        var vertices = bgeo.attributes.position.clone();
+        var vertices = baseGeometry.attributes.position.clone();
         igeo.addAttribute('position', vertices);
 
-        // var rawVertices = data.vertices;
-        // var vertices = new THREE.BufferAttribute(new Float32Array(rawVertices), 3);
-        // geometory.addAttribute('position', vertices);
-
-        var uvs = bgeo.attributes.uv.clone();
+        var uvs = baseGeometry.attributes.uv.clone();
         igeo.addAttribute('uv', uvs);
 
-        // var uvs = new THREE.BufferAttribute(new Float32Array(fighterTexcoordArray), 2);
-        // geometory.addAttribute('uv', uvs);
-
-        // var rawIndices = data.faces;
-        // var indices = new THREE.BufferAttribute(new Uint16Array(rawIndices), 1);
-        // geometory.setIndex(indices);
-
         // per instance data
-        translations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 3), 3, 1);
+        translations = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3, 1);
 
         var vector = new THREE.Vector4();
         for (var i = 0, ul = translations.count; i < ul; i++) {
@@ -110,26 +134,74 @@
         }
         igeo.addAttribute('translation', translations); // per mesh translation
 
-        orientations = new THREE.InstancedBufferAttribute(new Float32Array(instances * 4), 4, 1).setDynamic(true);
+        orientations = new THREE.InstancedBufferAttribute(new Float32Array(count * 4), 4, 1).setDynamic(true);
 
-        for (var i = 0, ul = orientations.count; i < ul; i++) {
-            var x = Math.random() * 2 - 1;
-            var y = Math.random() * 2 - 1;
-            var z = Math.random() * 2 - 1;
-            var w = Math.random() * 2 - 1;
-            vector.set(x, y, z, w).normalize();
+        // for (var i = 0, ul = orientations.count; i < ul; i++) {
+        //     var x = Math.random() * 2 - 1;
+        //     var y = Math.random() * 2 - 1;
+        //     var z = Math.random() * 2 - 1;
+        //     var w = Math.random() * 2 - 1;
+        //     vector.set(x, y, z, w).normalize();
 
-            orientations.setXYZ(i, vector.x, vector.y, vector.z, vector.w);
-        }
+        //     orientations.setXYZ(i, vector.x, vector.y, vector.z, vector.w);
+        // }
         igeo.addAttribute('orientation', orientations); // per mesh orientaion
 
         var mesh = new THREE.Mesh(igeo, material);
         scene.add(mesh);
+    }
 
-        if (renderer.extensions.get('ANGLE_instanced_arrays') === false) {
-            alert('Don\'t support instanced array extension.');
-            return;
+    /**
+     * Make normal objects.
+     *
+     * @param {number} count
+     */
+    function makeNormalObjects(count) {
+        var material = new THREE.MeshFaceMaterial(originalMaterials);
+        var mesh = new THREE.Mesh(originalGeometry, material);
+        var s = 0.5;
+        mesh.scale.set(s, s, s);
+        scene.add(mesh);
+        for (var i = 0; i < count; i++) {
+            var m = mesh.clone();
+            var x = Math.random() * 100 - 50;
+            var y = Math.random() * 100 - 50;
+            var z = Math.random() * 100 - 50;
+            m.position.set(x, y, z);
+            scene.add(m);
         }
+    }
+
+    /**
+     * Make objects.
+     *
+     * @param {number} count
+     * @param {string} type
+     */
+    function makeObjects(count, type) {
+
+        removeAll();
+
+        renderingType = type;
+        if (type === 'instance') {
+            makeInstance(count);
+        }
+        else {
+            makeNormalObjects(count);
+        }
+    }
+
+
+    new THREE.JSONLoader().load('models/table.json', function (geometry, materials) {
+
+        originalGeometry = geometry;
+        originalMaterials = materials;
+
+        // Base geometry
+        baseGeometry = new THREE.BufferGeometry().fromGeometry(originalGeometry);
+
+        makeObjects(instances, renderingType);
+        // makeObjects(instances, 'normalObject');
 
         initialized = true;
     });
@@ -149,52 +221,69 @@
             return;
         }
 
-        stats.begin();
+        renderer.render(scene, camera);
+    }
+
+    function update() {
+
+        if (!initialized) {
+            return;
+        }
 
         var time = Date.now();
 
-        // mesh.rotation.y = time * 0.00005;
-
-        renderer.render(scene, camera);
-
         var delta = (time - lastTime) / 5000;
 
-        tmpQ.set(
-            moveQ.x * delta,
-            moveQ.y * delta,
-            moveQ.z * delta,
-            1.0
-        ).normalize();
+        if (renderingType === 'instance') {
+            tmpQ.set(
+                    moveQ.x * delta,
+                    moveQ.y * delta,
+                    moveQ.z * delta,
+                    1.0
+                    ).normalize();
 
-        for (var i = 0, ul = orientations.count; i < ul; i++) {
-            var index = i * 4;
-            currentQ.set(
-                orientations.array[index + 0],
-                orientations.array[index + 1],
-                orientations.array[index + 2],
-                orientations.array[index + 3]
-            );
-            currentQ.multiply(tmpQ);
+            for (var i = 0, ul = orientations.count; i < ul; i++) {
+                var index = i * 4;
+                currentQ.set(
+                        orientations.array[index + 0],
+                        orientations.array[index + 1],
+                        orientations.array[index + 2],
+                        orientations.array[index + 3]
+                        );
+                currentQ.multiply(tmpQ);
 
-            orientations.setXYZW(i, currentQ.x, currentQ.y, currentQ.z, currentQ.w);
+                orientations.setXYZW(i, currentQ.x, currentQ.y, currentQ.z, currentQ.w);
+            }
+
+            // for (var i = 0, ul = translations.count; i < ul; i++) {
+            //     var index = i * 3;
+            //     translations.setXYZ(i, 0, 0, 0);
+            // }
+
+            // translations.needsUpdate = true;
+            orientations.needsUpdate = true;
         }
-
-        for (var i = 0, ul = translations.count; i < ul; i++) {
-            var index = i * 3;
-            translations.setXYZ(i, 0, 0, 0);
+        else {
+            scene.children.forEach(function (child, i) {
+                if (child instanceof THREE.Mesh) {
+                    child.rotation.x += 0.001;
+                    child.rotation.y += 0.001;
+                }
+            });
         }
-
-        // translations.needsUpdate = true;
-        orientations.needsUpdate = true;
 
         lastTime = time;
-
-        stats.end();
     }
 
     (function loop() {
         requestAnimationFrame(loop);
+
+        stats.begin();
+
+        update();
         render();
+
+        stats.end();
     }());
 
     document.addEventListener('DOMContentLoaded', function () {
