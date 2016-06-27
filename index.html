@@ -16,33 +16,11 @@ img, canvas {
     vertical-align: top;
 }
 </style>
-
-<script id="vs" type="x-shader/x-vertex">
-attribute vec3 translation;
-attribute vec4 orientation;
-
-void main() {
-    vec3 vPosition = position;
-    vec3 vcV = cross(orientation.xyz, vPosition);
-    vPosition = vcV * (2.0 * orientation.w) + (cross(orientation.xyz, vcV) * 2.0 + vPosition);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(translation + vPosition, 1.0);
-}
-</script>
-
-<script id="fs" type="x-shader/x-fragment">
-precision mediump float;
-
-uniform sampler2D map;
-
-void main() {
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    // gl_FragColor = texture2D(map, vUv);
-}
-</script>
 </head>
 <body>
     
 <script src="js/stats.min.js"></script>
+<script src="js/OrbitControls.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
