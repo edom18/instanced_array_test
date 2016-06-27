@@ -68,7 +68,7 @@
     // light.position.set(1, 5, -10);
     // scene.add(light);
 
-    var ambient = new THREE.AmbientLight(0x666666);
+    var ambient = new THREE.AmbientLight(0xffffff);
     scene.add(ambient);
 
     var translations = null;
@@ -264,12 +264,12 @@
             orientations.needsUpdate = true;
         }
         else {
-            scene.children.forEach(function (child, i) {
-                if (child instanceof THREE.Mesh) {
-                    child.rotation.x += 0.001;
-                    child.rotation.y += 0.001;
-                }
-            });
+            // scene.children.forEach(function (child, i) {
+            //     if (child instanceof THREE.Mesh) {
+            //         child.rotation.x += 0.001;
+            //         child.rotation.y += 0.001;
+            //     }
+            // });
         }
 
         lastTime = time;
