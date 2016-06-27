@@ -8,6 +8,7 @@
     camera.position.y = 2;
     camera.position.z = 2;
     camera.lookAt(new THREE.Vector3(0, 0, 0));
+
     var renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(0x101010);
     renderer.setPixelRatio(window.devicePixelRatio);
