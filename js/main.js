@@ -78,6 +78,7 @@
     var originalMaterials = null;
 
     var baseGeometry = null;
+    var igeo = null;
 
     function changeHandler() {
         renderingType = typeSelect.value;
@@ -113,13 +114,7 @@
         });
 
         // Instanced geometry
-        var igeo = new THREE.InstancedBufferGeometry();
-
-        var vertices = baseGeometry.attributes.position.clone();
-        igeo.addAttribute('position', vertices);
-
-        var uvs = baseGeometry.attributes.uv.clone();
-        igeo.addAttribute('uv', uvs);
+        igeo.maxInstancedCount = void 0; // set undefined
 
         // per instance data
         translations = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3, 1);
@@ -198,7 +193,7 @@
         originalMaterials = materials;
 
         // Base geometry
-        baseGeometry = new THREE.BufferGeometry().fromGeometry(originalGeometry);
+        igeo = new THREE.InstancedBufferGeometry().fromGeometry(originalGeometry);
 
         makeObjects(instances, renderingType);
         // makeObjects(instances, 'normalObject');
